@@ -1,0 +1,28 @@
+@import '@syncfusion/ej2-base/styles/material.css';
+@import '@syncfusion/ej2-buttons/styles/material.css';
+@import '@syncfusion/ej2-calendars/styles/material.css';
+@import '@syncfusion/ej2-dropdowns/styles/material.css';
+@import '@syncfusion/ej2-inputs/styles/material.css';
+@import '@syncfusion/ej2-lists/styles/material.css';
+@import '@syncfusion/ej2-popups/styles/material.css';
+@import '@syncfusion/ej2-react-schedule/styles/material.css';
+
+.salon-scheduler-wrapper {
+  background: #fff;
+  padding: 20px 24px 32px;
+  border-radius: 18px;
+  box-shadow: 0 4px 24px -4px rgba(0,0,0,.08);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.filter-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+.filter-bar select { padding: 4px 8px; border-radius: 6px; border: 1px solid #cbd5e1; background: #f8fafc; }
+
+.salon-extra-fields .e-control-wrapper { width: 100%; }
+
+@media (prefers-color-scheme: dark) {
+  .salon-scheduler-wrapper { background: #1f2937; box-shadow: 0 4px 24px -4px rgba(0,0,0,.6); }
+  .filter-bar select { background: #334155; color: #f1f5f9; border-color: #475569; }
+}
