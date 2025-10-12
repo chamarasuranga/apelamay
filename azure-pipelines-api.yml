@@ -1,0 +1,105 @@
+# Separate API Pipeline
+# Triggers only when API-related files change
+
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+  paths:
+    include:
+      - API/**
+      - Application/**
+      - Domain/**
+      - Infrastructure/**
+      - Persistence/**
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  buildConfiguration: 'Release'
+  appName: 'reactivities-api'
+  azureSubscription: 'AzureServiceConnection'
+
+stages:
+  - stage: Build
+    displayName: 'Build API'
+    jobs:
+      - job: BuildAPI
+        displayName: 'Build and Test'        steps:
+          - task: UseDotNet@2
+            displayName: 'Use .NET 9.0'
+            inputs:
+              version: '9.0.x'
+
+          - task: DotNetCoreCLI@2
+            displayName: 'Restore Dependencies'
+            inputs:
+              command: 'restore'
+              projects: 'API/API.csproj'
+
+          - task: DotNetCoreCLI@2
+            displayName: 'Build'
+            inputs:
+              command: 'build'
+              projects: 'API/API.csproj'
+              arguments: '--configuration $(buildConfiguration) --no-restore'
+
+          - task: DotNetCoreCLI@2
+            displayName: 'Run Tests'
+            inputs:
+              command: 'test'
+              projects: '**/*Tests.csproj'
+              arguments: '--configuration $(buildConfiguration) --no-build'
+            continueOnError: true
+
+          - task: DotNetCoreCLI@2
+            displayName: 'Publish'
+            inputs:
+              command: 'publish'
+              publishWebProjects: false
+              projects: 'API/API.csproj'
+              arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory) --no-build'
+              zipAfterPublish: true
+
+          - task: PublishPipelineArtifact@1
+            displayName: 'Publish Artifact'
+            inputs:
+              targetPath: '$(Build.ArtifactStagingDirectory)'
+              artifactName: 'api-drop'
+
+  - stage: DeployProduction
+    displayName: 'Deploy to Production'
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - deployment: DeployAPI
+        displayName: 'Deploy API'
+        environment: 'Production'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureWebApp@1
+                  displayName: 'Deploy to Azure App Service'
+                  inputs:
+                    azureSubscription: '$(azureSubscription)'
+                    appType: 'webApp'
+                    appName: '$(appName)'
+                    package: '$(Pipeline.Workspace)/**/*.zip'
+                    deploymentMethod: 'zipDeploy'
+
+                - task: PowerShell@2
+                  displayName: 'Health Check'
+                  inputs:
+                    targetType: 'inline'
+                    script: |
+                      Start-Sleep -Seconds 30
+                      $response = Invoke-WebRequest -Uri "https://$(appName).azurewebsites.net/api/activities" -UseBasicParsing
+                      if ($response.StatusCode -eq 200) {
+                        Write-Host "✅ API deployed successfully"
+                      } else {
+                        Write-Error "❌ Health check failed"
+                        exit 1
+                      }

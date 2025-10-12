@@ -1,0 +1,328 @@
+# Azure DevOps Pipeline for Reactivities
+# Deploys API and BFF (with React SPA) to separate Azure App Services
+
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  buildConfiguration: 'Release'
+  apiAppName: 'reactivities-api'
+  bffAppName: 'reactivities-bff'
+  azureSubscription: 'AzureServiceConnection'
+  nodeVersion: '18.x'
+  dotnetVersion: '9.0.x'
+
+stages:
+  # ========================================
+  # STAGE 1: BUILD
+  # ========================================
+  - stage: Build
+    displayName: 'Build Stage'
+    jobs:
+      # Build API
+      - job: BuildAPI
+        displayName: 'Build API'
+        steps:
+          - task: UseDotNet@2
+            displayName: 'Use .NET $(dotnetVersion)'
+            inputs:
+              version: '$(dotnetVersion)'
+
+          - task: DotNetCoreCLI@2
+            displayName: 'Restore API Dependencies'
+            inputs:
+              command: 'restore'
+              projects: 'API/API.csproj'
+
+          - task: DotNetCoreCLI@2
+            displayName: 'Build API'
+            inputs:
+              command: 'build'
+              projects: 'API/API.csproj'
+              arguments: '--configuration $(buildConfiguration) --no-restore'
+
+          - task: DotNetCoreCLI@2
+            displayName: 'Publish API'
+            inputs:
+              command: 'publish'
+              publishWebProjects: false
+              projects: 'API/API.csproj'
+              arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)/api --no-build'
+              zipAfterPublish: true
+
+          - task: PublishPipelineArtifact@1
+            displayName: 'Publish API Artifact'
+            inputs:
+              targetPath: '$(Build.ArtifactStagingDirectory)/api'
+              artifactName: 'api-artifact'
+              publishLocation: 'pipeline'
+
+      # Build BFF with React
+      - job: BuildBFF
+        displayName: 'Build BFF with React SPA'
+        steps:
+          - task: NodeTool@0
+            displayName: 'Install Node.js $(nodeVersion)'
+            inputs:
+              versionSpec: '$(nodeVersion)'
+
+          - script: |
+              echo "Building React application..."
+              cd client
+              npm ci
+              npm run build
+              echo "React build completed successfully"
+            displayName: 'Build React App'
+
+          - task: UseDotNet@2
+            displayName: 'Use .NET $(dotnetVersion)'
+            inputs:
+              version: '$(dotnetVersion)'
+
+          - task: DotNetCoreCLI@2
+            displayName: 'Restore BFF Dependencies'
+            inputs:
+              command: 'restore'
+              projects: 'BFF/BFF.csproj'
+
+          - task: DotNetCoreCLI@2
+            displayName: 'Build BFF'
+            inputs:
+              command: 'build'
+              projects: 'BFF/BFF.csproj'
+              arguments: '--configuration $(buildConfiguration) --no-restore'
+
+          - task: DotNetCoreCLI@2
+            displayName: 'Publish BFF'
+            inputs:
+              command: 'publish'
+              publishWebProjects: false
+              projects: 'BFF/BFF.csproj'
+              arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)/bff --no-build'
+              zipAfterPublish: true
+
+          - task: PublishPipelineArtifact@1
+            displayName: 'Publish BFF Artifact'
+            inputs:
+              targetPath: '$(Build.ArtifactStagingDirectory)/bff'
+              artifactName: 'bff-artifact'
+              publishLocation: 'pipeline'
+
+  # ========================================
+  # STAGE 2: DEPLOY TO STAGING
+  # ========================================
+  - stage: DeployStaging
+    displayName: 'Deploy to Staging'
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/develop'))
+    jobs:
+      # Deploy API to Staging
+      - deployment: DeployAPIStaging
+        displayName: 'Deploy API to Staging'
+        environment: 'Staging'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: DownloadPipelineArtifact@2
+                  displayName: 'Download API Artifact'
+                  inputs:
+                    artifactName: 'api-artifact'
+                    downloadPath: '$(Pipeline.Workspace)/api'
+
+                - task: AzureWebApp@1
+                  displayName: 'Deploy API to Azure App Service'
+                  inputs:
+                    azureSubscription: '$(azureSubscription)'
+                    appType: 'webApp'
+                    appName: '$(apiAppName)-staging'
+                    package: '$(Pipeline.Workspace)/api/**/*.zip'
+                    deploymentMethod: 'zipDeploy'
+
+                - task: PowerShell@2
+                  displayName: 'Smoke Test API'
+                  inputs:
+                    targetType: 'inline'
+                    script: |
+                      Start-Sleep -Seconds 30
+                      try {
+                        $response = Invoke-WebRequest -Uri "https://$(apiAppName)-staging.azurewebsites.net/api/activities" -UseBasicParsing
+                        Write-Host "API Health Check: $($response.StatusCode)"
+                      } catch {
+                        Write-Warning "API not yet responsive, may need warm-up"
+                      }
+
+      # Deploy BFF to Staging
+      - deployment: DeployBFFStaging
+        displayName: 'Deploy BFF to Staging'
+        dependsOn: DeployAPIStaging
+        environment: 'Staging'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: DownloadPipelineArtifact@2
+                  displayName: 'Download BFF Artifact'
+                  inputs:
+                    artifactName: 'bff-artifact'
+                    downloadPath: '$(Pipeline.Workspace)/bff'
+
+                - task: AzureWebApp@1
+                  displayName: 'Deploy BFF to Azure App Service'
+                  inputs:
+                    azureSubscription: '$(azureSubscription)'
+                    appType: 'webApp'
+                    appName: '$(bffAppName)-staging'
+                    package: '$(Pipeline.Workspace)/bff/**/*.zip'
+                    deploymentMethod: 'zipDeploy'
+
+                - task: PowerShell@2
+                  displayName: 'Smoke Test BFF'
+                  inputs:
+                    targetType: 'inline'
+                    script: |
+                      Start-Sleep -Seconds 30
+                      try {
+                        $response = Invoke-WebRequest -Uri "https://$(bffAppName)-staging.azurewebsites.net" -UseBasicParsing
+                        Write-Host "BFF Health Check: $($response.StatusCode)"
+                      } catch {
+                        Write-Warning "BFF not yet responsive, may need warm-up"
+                      }
+
+  # ========================================
+  # STAGE 3: DEPLOY TO PRODUCTION
+  # ========================================
+  - stage: DeployProduction
+    displayName: 'Deploy to Production'
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      # Deploy API to Production
+      - deployment: DeployAPIProduction
+        displayName: 'Deploy API to Production'
+        environment: 'Production'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: DownloadPipelineArtifact@2
+                  displayName: 'Download API Artifact'
+                  inputs:
+                    artifactName: 'api-artifact'
+                    downloadPath: '$(Pipeline.Workspace)/api'
+
+                - task: AzureWebApp@1
+                  displayName: 'Deploy API to Azure App Service'
+                  inputs:
+                    azureSubscription: '$(azureSubscription)'
+                    appType: 'webApp'
+                    appName: '$(apiAppName)'
+                    package: '$(Pipeline.Workspace)/api/**/*.zip'
+                    deploymentMethod: 'zipDeploy'
+
+                - task: PowerShell@2
+                  displayName: 'Verify API Deployment'
+                  inputs:
+                    targetType: 'inline'
+                    script: |
+                      Start-Sleep -Seconds 30
+                      $maxRetries = 5
+                      $retryCount = 0
+                      $success = $false
+                      
+                      while ($retryCount -lt $maxRetries -and -not $success) {
+                        try {
+                          $response = Invoke-WebRequest -Uri "https://$(apiAppName).azurewebsites.net/api/activities" -UseBasicParsing
+                          if ($response.StatusCode -eq 200) {
+                            Write-Host "✅ API is healthy (Status: $($response.StatusCode))"
+                            $success = $true
+                          }
+                        } catch {
+                          $retryCount++
+                          Write-Host "Retry $retryCount/$maxRetries - Waiting for API to be ready..."
+                          Start-Sleep -Seconds 10
+                        }
+                      }
+                      
+                      if (-not $success) {
+                        Write-Error "❌ API health check failed after $maxRetries retries"
+                        exit 1
+                      }
+
+      # Deploy BFF to Production
+      - deployment: DeployBFFProduction
+        displayName: 'Deploy BFF to Production'
+        dependsOn: DeployAPIProduction
+        environment: 'Production'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: DownloadPipelineArtifact@2
+                  displayName: 'Download BFF Artifact'
+                  inputs:
+                    artifactName: 'bff-artifact'
+                    downloadPath: '$(Pipeline.Workspace)/bff'
+
+                - task: AzureWebApp@1
+                  displayName: 'Deploy BFF to Azure App Service'
+                  inputs:
+                    azureSubscription: '$(azureSubscription)'
+                    appType: 'webApp'
+                    appName: '$(bffAppName)'
+                    package: '$(Pipeline.Workspace)/bff/**/*.zip'
+                    deploymentMethod: 'zipDeploy'
+
+                - task: PowerShell@2
+                  displayName: 'Verify BFF Deployment'
+                  inputs:
+                    targetType: 'inline'
+                    script: |
+                      Start-Sleep -Seconds 30
+                      $maxRetries = 5
+                      $retryCount = 0
+                      $success = $false
+                      
+                      while ($retryCount -lt $maxRetries -and -not $success) {
+                        try {
+                          $response = Invoke-WebRequest -Uri "https://$(bffAppName).azurewebsites.net" -UseBasicParsing
+                          if ($response.StatusCode -eq 200) {
+                            Write-Host "✅ BFF is healthy (Status: $($response.StatusCode))"
+                            $success = $true
+                          }
+                        } catch {
+                          $retryCount++
+                          Write-Host "Retry $retryCount/$maxRetries - Waiting for BFF to be ready..."
+                          Start-Sleep -Seconds 10
+                        }
+                      }
+                      
+                      if (-not $success) {
+                        Write-Error "❌ BFF health check failed after $maxRetries retries"
+                        exit 1
+                      }
+
+                - task: PowerShell@2
+                  displayName: 'Deployment Summary'
+                  inputs:
+                    targetType: 'inline'
+                    script: |
+                      Write-Host "======================================"
+                      Write-Host "🎉 DEPLOYMENT SUCCESSFUL!"
+                      Write-Host "======================================"
+                      Write-Host ""
+                      Write-Host "🌐 Application URLs:"
+                      Write-Host "   Frontend: https://$(bffAppName).azurewebsites.net"
+                      Write-Host "   API: https://$(apiAppName).azurewebsites.net"
+                      Write-Host ""
+                      Write-Host "📊 Deployment Details:"
+                      Write-Host "   Build Number: $(Build.BuildNumber)"
+                      Write-Host "   Commit: $(Build.SourceVersion)"
+                      Write-Host "   Branch: $(Build.SourceBranchName)"
+                      Write-Host "======================================"
