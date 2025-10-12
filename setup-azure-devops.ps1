@@ -3,18 +3,18 @@
 
 param(
     [Parameter(Mandatory=$true)]
-    [string]$ResourceGroup = "reactivities-rg",
+    [string]$ResourceGroup = "apelamayi-dev-rg",
     
     [Parameter(Mandatory=$true)]
     [string]$Location = "eastus",
     
     [Parameter(Mandatory=$true)]
-    [string]$ApiAppName = "reactivities-api",
+    [string]$ApiAppName = "apelamayi-dev-api",
     
     [Parameter(Mandatory=$true)]
-    [string]$BffAppName = "reactivities-bff",
+    [string]$BffAppName = "apelamayi-dev-bff",
     
-    [string]$AppServicePlan = "reactivities-plan",
+    [string]$AppServicePlan = "apelamayi-dev-plan",
     [string]$Sku = "B1"
 )
 
