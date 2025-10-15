@@ -1,10 +1,9 @@
-{
-  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+{  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
-    "appNamePrefix": {
+    "prefix": {
       "type": "string",
-      "defaultValue": "reactivities",
+      "defaultValue": "apelamay-int",
       "metadata": {
         "description": "Prefix for all resource names. Make it unique."
       }
@@ -15,8 +14,8 @@
       "metadata": {
         "description": "Location for all resources."
       }
-    },
-    "appServicePlanSku": {
+    },  
+     "appServicePlanSku": {
       "type": "string",
       "defaultValue": "B1",
       "allowedValues": [
@@ -41,18 +40,34 @@
       "metadata": {
         "description": "The admin username for SQL Server."
       }
-    },
-    "sqlAdministratorPassword": {
+    },    "sqlAdministratorPassword": {
       "type": "securestring",
       "metadata": {
         "description": "The admin password for SQL Server. Must be at least 8 characters."
       }
     },
-    "databaseName": {
+    "databaseSkuName": {
       "type": "string",
-      "defaultValue": "reactivitiesdb",
+      "defaultValue": "S1",
+      "allowedValues": [
+        "Basic",
+        "S0",
+        "S1",
+        "S2",
+        "S3",
+        "P1",
+        "P2",
+        "P3"
+      ],
       "metadata": {
-        "description": "The name of the SQL Database."
+        "description": "The SKU of the SQL Database. S1 is Standard tier with 20 DTUs."
+      }
+    },
+    "databaseMaxSizeBytes": {
+      "type": "int",
+      "defaultValue": 10737418240,
+      "metadata": {
+        "description": "The maximum size of the database in bytes. Default is 10 GB."
       }
     },
     "cloudinaryCloudName": {
@@ -90,13 +105,13 @@
         "description": "GitHub OAuth Client ID (optional)"
       }
     }
-  },
-  "variables": {
-    "appServicePlanName": "[concat(parameters('appNamePrefix'), '-plan')]",
-    "apiAppName": "[concat(parameters('appNamePrefix'), '-api')]",
-    "bffAppName": "[concat(parameters('appNamePrefix'), '-bff')]",
-    "sqlServerName": "[concat(parameters('appNamePrefix'), '-sql')]",
-    "applicationInsightsName": "[concat(parameters('appNamePrefix'), '-insights')]",
+  },  "variables": {
+    "appServicePlanName": "[concat(parameters('prefix'), '-plan')]",
+    "apiAppName": "[concat(parameters('prefix'), '-api')]",
+    "bffAppName": "[concat(parameters('prefix'), '-bff')]",
+    "sqlServerName": "[concat(parameters('prefix'), '-sql')]",
+    "databaseName": "[concat(parameters('prefix'), '-db')]",
+    "applicationInsightsName": "[concat(parameters('prefix'), '-insights')]",
     "apiUrl": "[concat('https://', variables('apiAppName'), '.azurewebsites.net')]",
     "bffUrl": "[concat('https://', variables('bffAppName'), '.azurewebsites.net')]"
   },
@@ -110,42 +125,50 @@
       },
       "kind": "windows",
       "properties": {
-        "reserved": false
-      }
+        "reserved": false      }
     },
     {
       "type": "Microsoft.Sql/servers",
-      "apiVersion": "2022-05-01-preview",
+      "apiVersion": "2022-02-01-preview",
       "name": "[variables('sqlServerName')]",
       "location": "[parameters('location')]",
+      "kind": "v12.0",
       "properties": {
         "administratorLogin": "[parameters('sqlAdministratorLogin')]",
         "administratorLoginPassword": "[parameters('sqlAdministratorPassword')]",
         "version": "12.0",
         "minimalTlsVersion": "1.2",
-        "publicNetworkAccess": "Enabled"
+        "publicNetworkAccess": "Enabled",
+        "restrictOutboundNetworkAccess": "Disabled"
       },
-      "resources": [
-        {
+      "resources": [        {
           "type": "databases",
-          "apiVersion": "2022-05-01-preview",
-          "name": "[parameters('databaseName')]",
+          "apiVersion": "2022-11-01-preview",
+          "name": "[variables('databaseName')]",
           "location": "[parameters('location')]",
           "dependsOn": [
             "[resourceId('Microsoft.Sql/servers', variables('sqlServerName'))]"
           ],
           "sku": {
-            "name": "S0",
-            "tier": "Standard"
+            "name": "[parameters('databaseSkuName')]",
+            "tier": "Standard",
+            "capacity": 20
           },
+          "kind": "v12.0,user",
           "properties": {
             "collation": "SQL_Latin1_General_CP1_CI_AS",
-            "maxSizeBytes": 268435456000
+            "maxSizeBytes": "[parameters('databaseMaxSizeBytes')]",
+            "catalogCollation": "SQL_Latin1_General_CP1_CI_AS",
+            "zoneRedundant": false,
+            "readScale": "Disabled",
+            "requestedBackupStorageRedundancy": "Local",
+            "isLedgerOn": false,
+            "availabilityZone": "NoPreference"
           }
         },
         {
           "type": "firewallRules",
-          "apiVersion": "2022-05-01-preview",
+          "apiVersion": "2022-02-01-preview",
           "name": "AllowAllAzureIps",
           "dependsOn": [
             "[resourceId('Microsoft.Sql/servers', variables('sqlServerName'))]"
@@ -173,8 +196,7 @@
       "type": "Microsoft.Web/sites",
       "apiVersion": "2022-09-01",
       "name": "[variables('apiAppName')]",
-      "location": "[parameters('location')]",
-      "dependsOn": [
+      "location": "[parameters('location')]",      "dependsOn": [
         "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]",
         "[resourceId('Microsoft.Insights/components', variables('applicationInsightsName'))]",
         "[resourceId('Microsoft.Sql/servers', variables('sqlServerName'))]"
@@ -209,16 +231,14 @@
             {
               "name": "CloudinarySettings__ApiSecret",
               "value": "[parameters('cloudinaryApiSecret')]"
-            },
-            {
+            },            {
               "name": "Resend__ApiToken",
               "value": "[parameters('resendApiToken')]"
             }
           ],
-          "connectionStrings": [
-            {
+          "connectionStrings": [            {
               "name": "DefaultConnection",
-              "connectionString": "[concat('Server=tcp:', reference(resourceId('Microsoft.Sql/servers', variables('sqlServerName'))).fullyQualifiedDomainName, ',1433;Initial Catalog=', parameters('databaseName'), ';Persist Security Info=False;User ID=', parameters('sqlAdministratorLogin'), ';Password=', parameters('sqlAdministratorPassword'), ';MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;')]",
+              "connectionString": "[concat('Server=tcp:', reference(resourceId('Microsoft.Sql/servers', variables('sqlServerName'))).fullyQualifiedDomainName, ',1433;Initial Catalog=', variables('databaseName'), ';Persist Security Info=False;User ID=', parameters('sqlAdministratorLogin'), ';Password=', parameters('sqlAdministratorPassword'), ';MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;')]",
               "type": "SQLAzure"
             }
           ]
@@ -261,8 +281,7 @@
         }
       }
     }
-  ],
-  "outputs": {
+  ],  "outputs": {
     "apiAppUrl": {
       "type": "string",
       "value": "[variables('apiUrl')]"
@@ -274,6 +293,9 @@
     "sqlServerFqdn": {
       "type": "string",
       "value": "[reference(resourceId('Microsoft.Sql/servers', variables('sqlServerName'))).fullyQualifiedDomainName]"
+    },    "databaseName": {
+      "type": "string",
+      "value": "[variables('databaseName')]"
     },
     "applicationInsightsInstrumentationKey": {
       "type": "string",

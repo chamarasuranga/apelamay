@@ -15,12 +15,12 @@ trigger:
       - Persistence/**
 
 pool:
-  vmImage: 'ubuntu-latest'
+  vmImage: 'windows-latest'
 
 variables:
   buildConfiguration: 'Release'
-  appName: 'reactivities-api'
-  azureSubscription: 'AzureServiceConnection'
+  appName: 'apelamay-int-api'
+  azureSubscription: 'Azure-Apelamay-Int'
 
 stages:
   - stage: Build

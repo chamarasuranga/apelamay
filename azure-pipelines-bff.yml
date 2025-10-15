@@ -12,13 +12,13 @@ trigger:
       - client/**
 
 pool:
-  vmImage: 'ubuntu-latest'
+  vmImage: 'windows-latest'
 
 variables:
   buildConfiguration: 'Release'
-  appName: 'reactivities-bff'
-  azureSubscription: 'AzureServiceConnection'
-  nodeVersion: '18.x'
+  appName: 'apelamay-int-bff'
+  azureSubscription: 'Azure-Apelamay-Int'
+  nodeVersion: '20.x'
 
 stages:
   - stage: Build

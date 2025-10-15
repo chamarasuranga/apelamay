@@ -8,14 +8,14 @@ trigger:
       - develop
 
 pool:
-  vmImage: 'ubuntu-latest'
+  vmImage: 'windows-latest'
 
 variables:
   buildConfiguration: 'Release'
-  apiAppName: 'reactivities-api'
-  bffAppName: 'reactivities-bff'
-  azureSubscription: 'AzureServiceConnection'
-  nodeVersion: '18.x'
+  apiAppName: 'apelamay-int-api'
+  bffAppName: 'apelamay-int-bff'
+  azureSubscription: 'Azure-Apelamay-Int'
+  nodeVersion: '20.x'
   dotnetVersion: '9.0.x'
 
 stages:

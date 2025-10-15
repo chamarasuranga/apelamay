@@ -1,15 +1,14 @@
 # Deploy Reactivities Infrastructure using ARM Template
 # This script deploys all Azure resources needed for the application
 
-param(
-    [Parameter(Mandatory=$false)]
-    [string]$ResourceGroupName = "reactivities-rg",
+param(    [Parameter(Mandatory=$false)]
+    [string]$ResourceGroupName = "apelamayi-int-rg",
     
     [Parameter(Mandatory=$false)]
     [string]$Location = "eastus",
     
     [Parameter(Mandatory=$false)]
-    [string]$AppNamePrefix = "reactivities",
+    [string]$AppNamePrefix = "apelamayi-int",
     
     [Parameter(Mandatory=$true)]
     [SecureString]$SqlAdminPassword,
