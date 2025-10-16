@@ -45,15 +45,15 @@ stages:
             inputs:
               command: 'build'
               projects: 'API/API.csproj'
-              arguments: '--configuration $(buildConfiguration) --no-restore'
-
-          - task: DotNetCoreCLI@2
+              arguments: '--configuration $(buildConfiguration) --no-restore'          - task: DotNetCoreCLI@2
             displayName: 'Run Tests'
             inputs:
               command: 'test'
               projects: '**/*Tests.csproj'
               arguments: '--configuration $(buildConfiguration) --no-build'
-            continueOnError: true          - task: DotNetCoreCLI@2
+            continueOnError: true
+
+          - task: DotNetCoreCLI@2
             displayName: 'Publish'
             inputs:
               command: 'publish'

@@ -30,13 +30,13 @@ stages:
           - task: NodeTool@0
             displayName: 'Install Node.js $(nodeVersion)'
             inputs:
-              versionSpec: '$(nodeVersion)'
-
-          - script: |
+              versionSpec: '$(nodeVersion)'          - script: |
               echo "Installing dependencies..."
               cd client
               npm ci
-            displayName: 'Install npm packages'          - script: |
+            displayName: 'Install npm packages'
+
+          - script: |
               echo "Building React application..."
               cd client
               npm run build
@@ -53,14 +53,14 @@ stages:
             displayName: 'Restore BFF'
             inputs:
               command: 'restore'
-              projects: 'BFF/BFF.csproj'
-
-          - task: DotNetCoreCLI@2
+              projects: 'BFF/BFF.csproj'          - task: DotNetCoreCLI@2
             displayName: 'Build BFF'
             inputs:
               command: 'build'
               projects: 'BFF/BFF.csproj'
-              arguments: '--configuration $(buildConfiguration) --no-restore'          - task: DotNetCoreCLI@2
+              arguments: '--configuration $(buildConfiguration) --no-restore'
+
+          - task: DotNetCoreCLI@2
             displayName: 'Publish BFF'
             inputs:
               command: 'publish'
