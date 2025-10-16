@@ -76,20 +76,21 @@ stages:
             inputs:
               targetPath: '$(Build.ArtifactStagingDirectory)'
               artifactName: 'bff-drop'
-
   - stage: DeployProduction
     displayName: 'Deploy to Production'
     dependsOn: Build
     condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
     jobs:
-      - deployment: DeployBFF
+      - job: DeployBFF
         displayName: 'Deploy BFF'
-        environment: 'Production'
-        strategy:
-          runOnce:
-            deploy:
-              steps:
-                - task: AzureWebApp@1
+        steps:
+          - task: DownloadPipelineArtifact@2
+            displayName: 'Download BFF Artifact'
+            inputs:
+              artifactName: 'bff-drop'
+              downloadPath: '$(Pipeline.Workspace)'
+
+          - task: AzureWebApp@1
                   displayName: 'Deploy to Azure App Service'
                   inputs:
                     azureSubscription: '$(azureSubscription)'
