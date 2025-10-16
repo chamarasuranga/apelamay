@@ -38,14 +38,15 @@ stages:
             displayName: 'Restore Dependencies'
             inputs:
               command: 'restore'
-              projects: 'API/API.csproj'
-
+              projects: 'API/API.csproj'          
           - task: DotNetCoreCLI@2
             displayName: 'Build'
             inputs:
               command: 'build'
               projects: 'API/API.csproj'
-              arguments: '--configuration $(buildConfiguration) --no-restore'          - task: DotNetCoreCLI@2
+              arguments: '--configuration $(buildConfiguration) --no-restore'
+
+          - task: DotNetCoreCLI@2
             displayName: 'Run Tests'
             inputs:
               command: 'test'

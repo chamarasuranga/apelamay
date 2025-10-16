@@ -26,11 +26,13 @@ stages:
     jobs:
       - job: BuildBFF
         displayName: 'Build and Package'
-        steps:
+        steps:          
           - task: NodeTool@0
             displayName: 'Install Node.js $(nodeVersion)'
             inputs:
-              versionSpec: '$(nodeVersion)'          - script: |
+              versionSpec: '$(nodeVersion)'
+
+          - script: |
               echo "Installing dependencies..."
               cd client
               npm ci
@@ -53,7 +55,9 @@ stages:
             displayName: 'Restore BFF'
             inputs:
               command: 'restore'
-              projects: 'BFF/BFF.csproj'          - task: DotNetCoreCLI@2
+              projects: 'BFF/BFF.csproj'
+
+          - task: DotNetCoreCLI@2
             displayName: 'Build BFF'
             inputs:
               command: 'build'
