@@ -24,7 +24,8 @@ variables:
 
 stages:
   - stage: Build
-    displayName: 'Build API'    jobs:
+    displayName: 'Build API'
+    jobs:
       - job: BuildAPI
         displayName: 'Build and Test'
         steps:
@@ -67,12 +68,12 @@ stages:
             displayName: 'Publish Artifact'
             inputs:
               targetPath: '$(Build.ArtifactStagingDirectory)'
-              artifactName: 'api-drop'
-  - stage: DeployProduction
+              artifactName: 'api-drop'  - stage: DeployProduction
     displayName: 'Deploy to Production'
     dependsOn: Build
     condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
-    jobs:      - job: DeployAPI
+    jobs:
+      - job: DeployAPI
         displayName: 'Deploy API'
         steps:
           - task: DownloadPipelineArtifact@2
