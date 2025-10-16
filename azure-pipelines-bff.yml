@@ -69,13 +69,13 @@ stages:
               publishWebProjects: false
               projects: 'BFF/BFF.csproj'
               arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory) --no-build'
-              zipAfterPublish: true
-
-          - task: PublishPipelineArtifact@1
+              zipAfterPublish: true          - task: PublishPipelineArtifact@1
             displayName: 'Publish Artifact'
             inputs:
               targetPath: '$(Build.ArtifactStagingDirectory)'
-              artifactName: 'bff-drop'  - stage: DeployProduction
+              artifactName: 'bff-drop'
+
+  - stage: DeployProduction
     displayName: 'Deploy to Production'
     dependsOn: Build
     condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
