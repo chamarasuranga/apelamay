@@ -36,15 +36,15 @@ stages:
               echo "Installing dependencies..."
               cd client
               npm ci
-            displayName: 'Install npm packages'
-
-          - script: |
+            displayName: 'Install npm packages'          - script: |
               echo "Building React application..."
               cd client
               npm run build
               echo "React build completed"
               ls -la ../BFF/wwwroot
-            displayName: 'Build React App'          - task: UseDotNet@2
+            displayName: 'Build React App'
+            
+          - task: UseDotNet@2
             displayName: 'Use .NET 9.0'
             inputs:
               version: '9.0.x'
@@ -80,10 +80,10 @@ stages:
     displayName: 'Deploy to Production'
     dependsOn: Build
     condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
-    jobs:
-      - job: DeployBFF
+    jobs:      - job: DeployBFF
         displayName: 'Deploy BFF'
-        steps:          - task: DownloadPipelineArtifact@2
+        steps:
+          - task: DownloadPipelineArtifact@2
             displayName: 'Download BFF Artifact'
             inputs:
               artifactName: 'bff-drop'

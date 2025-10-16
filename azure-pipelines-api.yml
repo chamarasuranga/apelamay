@@ -24,10 +24,10 @@ variables:
 
 stages:
   - stage: Build
-    displayName: 'Build API'
-    jobs:
+    displayName: 'Build API'    jobs:
       - job: BuildAPI
-        displayName: 'Build and Test'        steps:
+        displayName: 'Build and Test'
+        steps:
           - task: UseDotNet@2
             displayName: 'Use .NET 9.0'
             inputs:
@@ -72,10 +72,10 @@ stages:
     displayName: 'Deploy to Production'
     dependsOn: Build
     condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
-    jobs:
-      - job: DeployAPI
+    jobs:      - job: DeployAPI
         displayName: 'Deploy API'
-        steps:          - task: DownloadPipelineArtifact@2
+        steps:
+          - task: DownloadPipelineArtifact@2
             displayName: 'Download API Artifact'
             inputs:
               artifactName: 'api-drop'
