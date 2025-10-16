@@ -53,16 +53,16 @@ stages:
               command: 'test'
               projects: '**/*Tests.csproj'
               arguments: '--configuration $(buildConfiguration) --no-build'
-            continueOnError: true
-
-          - task: DotNetCoreCLI@2
+            continueOnError: true          - task: DotNetCoreCLI@2
             displayName: 'Publish'
             inputs:
               command: 'publish'
               publishWebProjects: false
               projects: 'API/API.csproj'
               arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory) --no-build'
-              zipAfterPublish: true          - task: PublishPipelineArtifact@1
+              zipAfterPublish: true
+
+          - task: PublishPipelineArtifact@1
             displayName: 'Publish Artifact'
             inputs:
               targetPath: '$(Build.ArtifactStagingDirectory)'

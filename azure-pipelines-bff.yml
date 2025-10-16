@@ -60,16 +60,16 @@ stages:
             inputs:
               command: 'build'
               projects: 'BFF/BFF.csproj'
-              arguments: '--configuration $(buildConfiguration) --no-restore'
-
-          - task: DotNetCoreCLI@2
+              arguments: '--configuration $(buildConfiguration) --no-restore'          - task: DotNetCoreCLI@2
             displayName: 'Publish BFF'
             inputs:
               command: 'publish'
               publishWebProjects: false
               projects: 'BFF/BFF.csproj'
               arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory) --no-build'
-              zipAfterPublish: true          - task: PublishPipelineArtifact@1
+              zipAfterPublish: true
+
+          - task: PublishPipelineArtifact@1
             displayName: 'Publish Artifact'
             inputs:
               targetPath: '$(Build.ArtifactStagingDirectory)'
