@@ -33,7 +33,7 @@ agent.interceptors.response.use(
         switch (status) {
             case 400:
                 if (data.errors) {
-                    const modalStateErrors = [];
+                    const modalStateErrors: string[] = [];
                     for (const key in data.errors) {
                         if (data.errors[key]) {
                             modalStateErrors.push(data.errors[key]);
