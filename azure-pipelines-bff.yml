@@ -91,7 +91,7 @@ stages:
             displayName: 'Download BFF Artifact'
             inputs:
               artifactName: 'bff-drop'
-              downloadPath: '$(Pipeline.Workspace)'
+              downloadPath: '$(Pipeline.Workspace)/bff-drop'
 
           - task: AzureWebApp@1
             displayName: 'Deploy to Azure App Service'
@@ -99,7 +99,7 @@ stages:
               azureSubscription: '$(azureSubscription)'
               appType: 'webApp'
               appName: '$(appName)'
-              package: '$(Pipeline.Workspace)/**/*.zip'
+              package: '$(Pipeline.Workspace)/bff-drop/*.zip'
               deploymentMethod: 'zipDeploy'
 
           - task: PowerShell@2

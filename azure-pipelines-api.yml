@@ -38,14 +38,14 @@ stages:
             displayName: 'Restore Dependencies'
             inputs:
               command: 'restore'
-              projects: 'API/API.csproj'          
+              projects: 'API/API.csproj'
+
           - task: DotNetCoreCLI@2
             displayName: 'Build'
             inputs:
               command: 'build'
               projects: 'API/API.csproj'
-              arguments: '--configuration $(buildConfiguration) --no-restore'
-
+              arguments: '--configuration $(buildConfiguration) --no-restore'          
           - task: DotNetCoreCLI@2
             displayName: 'Run Tests'
             inputs:
@@ -67,7 +67,9 @@ stages:
             displayName: 'Publish Artifact'
             inputs:
               targetPath: '$(Build.ArtifactStagingDirectory)'
-              artifactName: 'api-drop'  # Deploy to INT Environment
+              artifactName: 'api-drop'
+
+  # Deploy to INT Environment
   - stage: DeployINT
     displayName: 'Deploy to INT'
     dependsOn: Build
@@ -94,7 +96,7 @@ stages:
                   displayName: 'Download API Artifact'
                   inputs:
                     artifactName: 'api-drop'
-                    downloadPath: '$(Pipeline.Workspace)'
+                    downloadPath: '$(Pipeline.Workspace)/api-drop'
 
                 - task: AzureWebApp@1
                   displayName: 'Deploy to Azure App Service'
@@ -102,9 +104,8 @@ stages:
                     azureSubscription: '$(azureSubscription)'
                     appType: 'webApp'
                     appName: '$(appName)'
-                    package: '$(Pipeline.Workspace)/**/*.zip'
-                    deploymentMethod: 'zipDeploy'
-
+                    package: '$(Pipeline.Workspace)/api-drop/*.zip'
+                    deploymentMethod: 'zipDeploy'                
                 - task: PowerShell@2
                   displayName: 'Health Check'
                   inputs:
@@ -117,7 +118,9 @@ stages:
                       } else {
                         Write-Error "❌ Health check failed"
                         exit 1
-                      }  # Deploy to UAT Environment
+                      }
+
+  # Deploy to UAT Environment
   - stage: DeployUAT
     displayName: 'Deploy to UAT'
     dependsOn: Build
@@ -137,7 +140,7 @@ stages:
                   displayName: 'Download API Artifact'
                   inputs:
                     artifactName: 'api-drop'
-                    downloadPath: '$(Pipeline.Workspace)'
+                    downloadPath: '$(Pipeline.Workspace)/api-drop'
 
                 - task: AzureWebApp@1
                   displayName: 'Deploy to Azure App Service'
@@ -145,9 +148,8 @@ stages:
                     azureSubscription: '$(azureSubscription)'
                     appType: 'webApp'
                     appName: '$(appName)'
-                    package: '$(Pipeline.Workspace)/**/*.zip'
-                    deploymentMethod: 'zipDeploy'
-
+                    package: '$(Pipeline.Workspace)/api-drop/*.zip'
+                    deploymentMethod: 'zipDeploy'                
                 - task: PowerShell@2
                   displayName: 'Health Check'
                   inputs:
@@ -160,7 +162,9 @@ stages:
                       } else {
                         Write-Error "❌ Health check failed"
                         exit 1
-                      }  # Deploy to PROD Environment
+                      }
+
+  # Deploy to PROD Environment
   - stage: DeployPROD
     displayName: 'Deploy to PROD'
     dependsOn: Build
@@ -180,7 +184,7 @@ stages:
                   displayName: 'Download API Artifact'
                   inputs:
                     artifactName: 'api-drop'
-                    downloadPath: '$(Pipeline.Workspace)'
+                    downloadPath: '$(Pipeline.Workspace)/api-drop'
 
                 - task: AzureWebApp@1
                   displayName: 'Deploy to Azure App Service'
@@ -188,7 +192,7 @@ stages:
                     azureSubscription: '$(azureSubscription)'
                     appType: 'webApp'
                     appName: '$(appName)'
-                    package: '$(Pipeline.Workspace)/**/*.zip'
+                    package: '$(Pipeline.Workspace)/api-drop/*.zip'
                     deploymentMethod: 'zipDeploy'
 
                 - task: PowerShell@2
