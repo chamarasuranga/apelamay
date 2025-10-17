@@ -19,7 +19,7 @@ pool:
 
 variables:
   buildConfiguration: 'Release'
-  appName: 'apelamay-int-api'
+  basePrefix: 'apelamay'
   azureSubscription: 'Azure-Apelamay-Int'
 
 stages:
@@ -67,41 +67,133 @@ stages:
             displayName: 'Publish Artifact'
             inputs:
               targetPath: '$(Build.ArtifactStagingDirectory)'
-              artifactName: 'api-drop'
+              artifactName: 'api-drop'  # Deploy to INT Environment
+  - stage: DeployINT
+    displayName: 'Deploy to INT'
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/develop'))
+    variables:
+      environment: 'int'
+      appName: '$(basePrefix)-$(environment)-api'
+    jobs:
+      - deployment: DeployAPI
+        displayName: 'Deploy API to INT'
+        environment: 'INT'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: DownloadPipelineArtifact@2
+                  displayName: 'Download API Artifact'
+                  inputs:
+                    artifactName: 'api-drop'
+                    downloadPath: '$(Pipeline.Workspace)'
 
-  - stage: DeployProduction
-    displayName: 'Deploy to Production'
+                - task: AzureWebApp@1
+                  displayName: 'Deploy to Azure App Service'
+                  inputs:
+                    azureSubscription: '$(azureSubscription)'
+                    appType: 'webApp'
+                    appName: '$(appName)'
+                    package: '$(Pipeline.Workspace)/**/*.zip'
+                    deploymentMethod: 'zipDeploy'
+
+                - task: PowerShell@2
+                  displayName: 'Health Check'
+                  inputs:
+                    targetType: 'inline'
+                    script: |
+                      Start-Sleep -Seconds 30
+                      $response = Invoke-WebRequest -Uri "https://$(appName).azurewebsites.net/api/activities" -UseBasicParsing
+                      if ($response.StatusCode -eq 200) {
+                        Write-Host "✅ API deployed successfully to INT"
+                      } else {
+                        Write-Error "❌ Health check failed"
+                        exit 1
+                      }  # Deploy to UAT Environment
+  - stage: DeployUAT
+    displayName: 'Deploy to UAT'
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/uat'))
+    variables:
+      environment: 'uat'
+      appName: '$(basePrefix)-$(environment)-api'
+    jobs:
+      - deployment: DeployAPI
+        displayName: 'Deploy API to UAT'
+        environment: 'UAT'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: DownloadPipelineArtifact@2
+                  displayName: 'Download API Artifact'
+                  inputs:
+                    artifactName: 'api-drop'
+                    downloadPath: '$(Pipeline.Workspace)'
+
+                - task: AzureWebApp@1
+                  displayName: 'Deploy to Azure App Service'
+                  inputs:
+                    azureSubscription: '$(azureSubscription)'
+                    appType: 'webApp'
+                    appName: '$(appName)'
+                    package: '$(Pipeline.Workspace)/**/*.zip'
+                    deploymentMethod: 'zipDeploy'
+
+                - task: PowerShell@2
+                  displayName: 'Health Check'
+                  inputs:
+                    targetType: 'inline'
+                    script: |
+                      Start-Sleep -Seconds 30
+                      $response = Invoke-WebRequest -Uri "https://$(appName).azurewebsites.net/api/activities" -UseBasicParsing
+                      if ($response.StatusCode -eq 200) {
+                        Write-Host "✅ API deployed successfully to UAT"
+                      } else {
+                        Write-Error "❌ Health check failed"
+                        exit 1
+                      }  # Deploy to PROD Environment
+  - stage: DeployPROD
+    displayName: 'Deploy to PROD'
     dependsOn: Build
     condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    variables:
+      environment: 'prod'
+      appName: '$(basePrefix)-$(environment)-api'
     jobs:
-      - job: DeployAPI
-        displayName: 'Deploy API'
-        steps:
-          - task: DownloadPipelineArtifact@2
-            displayName: 'Download API Artifact'
-            inputs:
-              artifactName: 'api-drop'
-              downloadPath: '$(Pipeline.Workspace)'
+      - deployment: DeployAPI
+        displayName: 'Deploy API to PROD'
+        environment: 'Production'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: DownloadPipelineArtifact@2
+                  displayName: 'Download API Artifact'
+                  inputs:
+                    artifactName: 'api-drop'
+                    downloadPath: '$(Pipeline.Workspace)'
 
-          - task: AzureWebApp@1
-            displayName: 'Deploy to Azure App Service'
-            inputs:
-              azureSubscription: '$(azureSubscription)'
-              appType: 'webApp'
-              appName: '$(appName)'
-              package: '$(Pipeline.Workspace)/**/*.zip'
-              deploymentMethod: 'zipDeploy'
+                - task: AzureWebApp@1
+                  displayName: 'Deploy to Azure App Service'
+                  inputs:
+                    azureSubscription: '$(azureSubscription)'
+                    appType: 'webApp'
+                    appName: '$(appName)'
+                    package: '$(Pipeline.Workspace)/**/*.zip'
+                    deploymentMethod: 'zipDeploy'
 
-          - task: PowerShell@2
-            displayName: 'Health Check'
-            inputs:
-              targetType: 'inline'
-              script: |
-                Start-Sleep -Seconds 30
-                $response = Invoke-WebRequest -Uri "https://$(appName).azurewebsites.net/api/activities" -UseBasicParsing
-                if ($response.StatusCode -eq 200) {
-                  Write-Host "✅ API deployed successfully"
-                } else {
-                  Write-Error "❌ Health check failed"
-                  exit 1
-                }
+                - task: PowerShell@2
+                  displayName: 'Health Check'
+                  inputs:
+                    targetType: 'inline'
+                    script: |
+                      Start-Sleep -Seconds 30
+                      $response = Invoke-WebRequest -Uri "https://$(appName).azurewebsites.net/api/activities" -UseBasicParsing
+                      if ($response.StatusCode -eq 200) {
+                        Write-Host "✅ API deployed successfully to PROD"
+                      } else {
+                        Write-Error "❌ Health check failed"
+                        exit 1
+                      }

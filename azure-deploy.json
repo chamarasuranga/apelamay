@@ -1,6 +1,19 @@
-{  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+{  
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
+    "environment": {
+      "type": "string",
+      "defaultValue": "int",
+      "allowedValues": [
+        "int",
+        "uat",
+        "prod"
+      ],
+      "metadata": {
+        "description": "Environment name (int, uat, prod). Will be used in resource naming."
+      }
+    },
     "prefix": {
       "type": "string",
       "defaultValue": "apelamay-int",
@@ -40,7 +53,8 @@
       "metadata": {
         "description": "The admin username for SQL Server."
       }
-    },    "sqlAdministratorPassword": {
+    },    
+    "sqlAdministratorPassword": {
       "type": "securestring",
       "metadata": {
         "description": "The admin password for SQL Server. Must be at least 8 characters."
@@ -105,17 +119,19 @@
         "description": "GitHub OAuth Client ID (optional)"
       }
     }
-  },  "variables": {
-    "appServicePlanName": "[concat(parameters('prefix'), '-plan')]",
-    "apiAppName": "[concat(parameters('prefix'), '-api')]",
-    "bffAppName": "[concat(parameters('prefix'), '-bff')]",
-    "sqlServerName": "[concat(parameters('prefix'), '-sql')]",
-    "databaseName": "[concat(parameters('prefix'), '-db')]",
-    "applicationInsightsName": "[concat(parameters('prefix'), '-insights')]",
+  },  
+  "variables": {
+    "appServicePlanName": "[concat(parameters('prefix'), '-', parameters('environment'), '-plan')]",
+    "apiAppName": "[concat(parameters('prefix'), '-', parameters('environment'), '-api')]",
+    "bffAppName": "[concat(parameters('prefix'), '-', parameters('environment'), '-bff')]",
+    "sqlServerName": "[concat(parameters('prefix'), '-', parameters('environment'), '-sql')]",
+    "databaseName": "[concat(parameters('prefix'), '-', parameters('environment'), '-db')]",
+    "applicationInsightsName": "[concat(parameters('prefix'), '-', parameters('environment'), '-insights')]",
     "apiUrl": "[concat('https://', variables('apiAppName'), '.azurewebsites.net')]",
     "bffUrl": "[concat('https://', variables('bffAppName'), '.azurewebsites.net')]"
   },
-  "resources": [    {
+  "resources": [    
+    {
       "type": "Microsoft.Web/serverfarms",
       "apiVersion": "2022-09-01",
       "name": "[variables('appServicePlanName')]",
@@ -125,7 +141,8 @@
       },
       "kind": "windows",
       "properties": {
-        "reserved": false      }
+        "reserved": false      
+      }
     },
     {
       "type": "Microsoft.Sql/servers",
@@ -141,7 +158,8 @@
         "publicNetworkAccess": "Enabled",
         "restrictOutboundNetworkAccess": "Disabled"
       },
-      "resources": [        {
+      "resources": [        
+        {
           "type": "databases",
           "apiVersion": "2022-11-01-preview",
           "name": "[variables('databaseName')]",
@@ -192,11 +210,13 @@
         "publicNetworkAccessForIngestion": "Enabled",
         "publicNetworkAccessForQuery": "Enabled"
       }
-    },    {
+    },    
+    {
       "type": "Microsoft.Web/sites",
       "apiVersion": "2022-09-01",
       "name": "[variables('apiAppName')]",
-      "location": "[parameters('location')]",      "dependsOn": [
+      "location": "[parameters('location')]",      
+      "dependsOn": [
         "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]",
         "[resourceId('Microsoft.Insights/components', variables('applicationInsightsName'))]",
         "[resourceId('Microsoft.Sql/servers', variables('sqlServerName'))]"
@@ -231,12 +251,14 @@
             {
               "name": "CloudinarySettings__ApiSecret",
               "value": "[parameters('cloudinaryApiSecret')]"
-            },            {
+            },            
+            {
               "name": "Resend__ApiToken",
               "value": "[parameters('resendApiToken')]"
             }
           ],
-          "connectionStrings": [            {
+          "connectionStrings": [            
+            {
               "name": "DefaultConnection",
               "connectionString": "[concat('Server=tcp:', reference(resourceId('Microsoft.Sql/servers', variables('sqlServerName'))).fullyQualifiedDomainName, ',1433;Initial Catalog=', variables('databaseName'), ';Persist Security Info=False;User ID=', parameters('sqlAdministratorLogin'), ';Password=', parameters('sqlAdministratorPassword'), ';MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;')]",
               "type": "SQLAzure"
@@ -244,7 +266,8 @@
           ]
         }
       }
-    },    {
+    },    
+    {
       "type": "Microsoft.Web/sites",
       "apiVersion": "2022-09-01",
       "name": "[variables('bffAppName')]",
@@ -281,7 +304,8 @@
         }
       }
     }
-  ],  "outputs": {
+  ],  
+  "outputs": {
     "apiAppUrl": {
       "type": "string",
       "value": "[variables('apiUrl')]"
@@ -293,7 +317,8 @@
     "sqlServerFqdn": {
       "type": "string",
       "value": "[reference(resourceId('Microsoft.Sql/servers', variables('sqlServerName'))).fullyQualifiedDomainName]"
-    },    "databaseName": {
+    },    
+    "databaseName": {
       "type": "string",
       "value": "[variables('databaseName')]"
     },
