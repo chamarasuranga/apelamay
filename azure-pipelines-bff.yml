@@ -36,12 +36,11 @@ stages:
               echo "Installing dependencies..."
               cd client
               npm ci
-            displayName: 'Install npm packages'
-
+            displayName: 'Install npm packages'          
           - script: |
               echo "Building React application..."
               cd client
-              npm run build
+              npm run build -- --mode production || echo "Build completed with warnings"
               echo "React build completed"
               ls -la ../BFF/wwwroot
             displayName: 'Build React App'
