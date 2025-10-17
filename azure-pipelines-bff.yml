@@ -45,7 +45,7 @@ stages:
               echo "React build completed"
               ls -la ../BFF/wwwroot
             displayName: 'Build React App'
-              - task: UseDotNet@2
+          - task: UseDotNet@2
             displayName: 'Use .NET 9.0'
             inputs:
               version: '9.0.x'
