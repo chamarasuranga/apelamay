@@ -35,11 +35,13 @@ Resources created:
 
 ### Branch → Environment Mapping
 
-| Branch | Environment | Triggers |
-|--------|------------|----------|
-| `develop` | **INT** | Automatic on push |
-| `uat` | **UAT** | Automatic on push |
-| `main` | **PROD** | Automatic on push |
+| Branch | Environments Deployed | Triggers |
+|--------|----------------------|----------|
+| `develop` | **INT only** | Automatic on push |
+| `uat` | **UAT only** | Automatic on push |
+| `main` | **INT + PROD** | Automatic on push (both environments) |
+
+**Note:** When you push to `main`, it deploys to **both INT and PROD** environments. This allows you to test in INT before the production deployment.
 
 ## Setup Instructions
 
